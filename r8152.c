@@ -17559,7 +17559,6 @@ static void r8156_init(struct r8152 *tp)
 //		break;
 //	}
 
-
 	r8153b_mcu_spdown_en(tp, false);
 
 	ocp_data = ocp_read_word(tp, MCU_TYPE_PLA, PLA_EXTRA_STATUS);
@@ -18339,7 +18338,6 @@ int rtl8152_get_settings(struct net_device *netdev, struct ethtool_cmd *cmd)
 	} else {
 		cmd->autoneg = AUTONEG_DISABLE;
 	}
-
 
 	if (netif_running(netdev) && netif_carrier_ok(netdev)) {
 		u16 speed = rtl8152_get_speed(tp);
@@ -19202,7 +19200,6 @@ static int rtltool_ioctl(struct r8152 *tp, struct ifreq *ifr)
 			break;
 		}
 		break;
-
 
 	case RTLTOOL_USB_OCP_WRITE_DWORD:
 		if (!tp->rtk_enable_diag && net_ratelimit())
@@ -20460,9 +20457,12 @@ static ssize_t sg_en_store(struct device *dev, struct device_attribute *attr,
 	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0)
+/* LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) */
 	netif_set_tso_max_size(netdev, tso_size);
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) */
-
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
+/* LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26) */
+	netif_set_gso_max_size(netdev, tso_size);
+#endif
 
 	return count;
 }
@@ -20623,8 +20623,15 @@ static int rtl8152_probe(struct usb_interface *intf,
 
 	netdev->ethtool_ops = &ops;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0)
+/* LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) */
 	netif_set_tso_max_size(netdev, RTL_LIMITED_TSO_SIZE);
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0) */
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
+/* LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26) */
+	if (!tp->sg_use)
+		netif_set_gso_max_size(netdev, RTL_LIMITED_TSO_SIZE);
+#else
+	netdev->features &= ~(NETIF_F_TSO | NETIF_F_TSO6);
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
 	/* MTU range: 68 - 1500 or 9194 */
@@ -20699,10 +20706,14 @@ static int rtl8152_probe(struct usb_interface *intf,
 
 	usb_set_intfdata(intf, tp);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
 	if (tp->support_2500full)
 		netif_napi_add(netdev, &tp->napi, r8152_poll, 256);
 	else
 		netif_napi_add(netdev, &tp->napi, r8152_poll, 64);
+#else /* LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0) */
+  netif_napi_add(netdev, &tp->napi, r8152_poll);
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0) */
 
 	ret = register_netdev(netdev);
 	if (ret != 0) {
@@ -20824,11 +20835,11 @@ static const struct usb_device_id rtl8152_table[] = {
 	REALTEK_USB_DEVICE(VENDOR_ID_LENOVO, 0xa359),
 	REALTEK_USB_DEVICE(VENDOR_ID_LENOVO, 0xa387),
 
+   	/* ASUS */
+  	REALTEK_USB_DEVICE(VENDOR_ID_ASUS, 0x1976),
+
 	/* TP-LINK */
 	REALTEK_USB_DEVICE(VENDOR_ID_TPLINK, 0x0601),
-
-	/* ASUS */
-	REALTEK_USB_DEVICE(VENDOR_ID_ASUS, 0x1976),
 
 	/* Nvidia */
 	REALTEK_USB_DEVICE(VENDOR_ID_NVIDIA,  0x09ff),
