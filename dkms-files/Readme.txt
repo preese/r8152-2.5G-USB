@@ -1,25 +1,15 @@
-dnf install kernel kernel-devel gcc dkms
-cp -r {r8152 source} /usr/src/r8152-{ver}
-Copy Source to /usr/src/modname-version#
-cp /usr/src/r8152-ver/dkms-files/dkms.conf /usr/src/r8152-ver/dkms-files/vmlinuxcopy.sh /usr/src/r8142-ver/
-add dkms.conf file to the above dir too
-add vmlinuxlinuxcopy.sh to same dir
-#  add dracut.sh to same dir (might not be needed after first install)
+dnf -y install kernel kernel-devel gcc dkms git
+git clone https://github.com/preese/r8152-2.5G-USB.git
+cd r8152-2.5G-USB/
+mkdir /usr/src/r8152-2.16.3
+cp -r * /usr/src/r8152-2.16.3/
 
-sudo dkms add -m ixgbe -v 4.3.15   
-   Add module to kernel tree
-sudo dkms build -m ixgbe -v 4.3.15
-   Build specified module against installed kernel
-sudo dkms install -m ixgbe -v 4.3.15
-  Install current module into kernel tree
-(issue sudo dracut -f, the first run)
+dkms add -m r8152 -v 2.16.3
+dkms build -m r8152 -v 2.16.3
+dkms install -m r8152 -v 2.16.3
+./dkms-files/dracut.sh
 
-dkms status | grep (modulename)
+dkms status | grep r8152
   Check that it is installed 
-modinfo (modulename)  
-  to insure it is intalled
-
-Always be sure both rpms are installed for new kernel
-sudo yum install kernel kernel-devel
-
-
+modinfo r8152
+  to insure it is installed
